@@ -348,3 +348,34 @@ JOIN
     Practicien pr ON p.nom = pr.nom AND p.prenom = pr.prenom
 ORDER BY 
     p.nom, p.prenom;
+--28
+-- Patients qui ont passé tous les tests liés à la compétence PB
+WITH tests_PB AS (
+    SELECT id_test
+    FROM Test
+    WHERE id_competence = (SELECT id_competence FROM Competence WHERE nom_capacite = 'PB')
+),
+patients_ayant_tous_les_tests_PB AS (
+    SELECT rta.id_patient
+    FROM Patient p
+    JOIN Resultat_test_autisme rta ON p.id_patient = rta.id_patient
+    WHERE rta.id_test IN (SELECT id_test FROM tests_PB)
+    GROUP BY rta.id_patient
+    HAVING COUNT(DISTINCT rta.id_test) = (SELECT COUNT(*) FROM tests_PB)
+),
+patients_avec_plan_actif AS (
+    SELECT DISTINCT id_patient
+    FROM Plan_Intervention
+    WHERE statut = 'Actif'
+)
+
+-- Résultat final : patients ayant fait tous les tests PB mais sans plan actif
+SELECT p.id_patient, p.nom, p.prenom
+FROM Patient p
+WHERE p.id_patient IN (SELECT id_patient FROM patients_ayant_tous_les_tests_PB)
+MINUS
+SELECT p.id_patient, p.nom, p.prenom
+FROM Patient p
+WHERE p.id_patient IN (SELECT id_patient FROM patients_avec_plan_actif);
+
+--29
