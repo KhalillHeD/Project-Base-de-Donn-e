@@ -379,3 +379,30 @@ FROM Patient p
 WHERE p.id_patient IN (SELECT id_patient FROM patients_avec_plan_actif);
 
 --29
+SELECT 
+    patient_nom,
+    nom_capacite,
+    MIN(date_test) AS date_premier_test,
+    MAX(date_test) AS date_dernier_test,
+    MIN(premier_score) AS premier_score,
+    MAX(dernier_score) AS dernier_score
+FROM (
+    SELECT 
+        p.nom AS patient_nom,
+        c.nom_capacite,
+        rt.date_test,
+        FIRST_VALUE(rt.score_brut) OVER (PARTITION BY p.id_patient, c.id_competence ORDER BY rt.date_test) AS premier_score,
+        LAST_VALUE(rt.score_brut) OVER (
+            PARTITION BY p.id_patient, c.id_competence 
+            ORDER BY rt.date_test 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS dernier_score
+    FROM Resultat_test_autisme rt
+    JOIN Patient p ON rt.id_patient = p.id_patient
+    JOIN Test t ON rt.id_test = t.id_test
+    JOIN Competence c ON t.id_competence = c.id_competence
+    WHERE p.nom = 'Hadj'
+)
+GROUP BY patient_nom, nom_capacite;
+
+
