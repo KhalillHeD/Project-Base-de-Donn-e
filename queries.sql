@@ -425,11 +425,10 @@ ORDER BY
 
 
 
--- 🔎 Requête : Détecter les patients sans plan d’intervention
---              qui présentent un écart significatif (≥ 2 ans)
---              entre leur âge réel et leur âge mental moyen
+-- 🔎 Requête : Rendez-vous récents pour patients avec écart développemental > seuil
+-- Paramètres à ajuster : :seuil_ecart_age, :date_reference
 
-WITH age_mental_moyen_par_patient AS (
+WITH age_mental_moyen AS (
     SELECT 
         r.id_patient,
         ROUND(AVG(r.age_mental_calcule), 1) AS age_mental_moyen
@@ -438,35 +437,38 @@ WITH age_mental_moyen_par_patient AS (
     GROUP BY 
         r.id_patient
 ),
-patients_sans_plan AS (
+patients_en_ecart AS (
     SELECT 
         p.id_patient,
         p.nom,
         p.prenom,
-        p.date_naissance
+        EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance) AS age_reel,
+        am.age_mental_moyen,
+        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance)) - am.age_mental_moyen AS ecart
     FROM 
         Patient p
-    WHERE 
-        p.id_patient NOT IN (SELECT DISTINCT id_patient FROM Plan_Intervention)
-),
-patients_a_prioriser AS (
-    SELECT 
-        ps.id_patient,
-        ps.nom,
-        ps.prenom,
-        EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM ps.date_naissance) AS age_reel,
-        am.age_mental_moyen,
-        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM ps.date_naissance)) - am.age_mental_moyen AS ecart_age
-    FROM 
-        patients_sans_plan ps
     JOIN 
-        age_mental_moyen_par_patient am ON ps.id_patient = am.id_patient
+        age_mental_moyen am ON p.id_patient = am.id_patient
+    WHERE 
+        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance)) - am.age_mental_moyen > :seuil_ecart_age
 )
 
-SELECT *
-FROM patients_a_prioriser
-WHERE ecart_age >= 2
-ORDER BY ecart_age DESC;
-
-
-
+SELECT 
+    p.nom AS patient_nom,
+    p.prenom AS patient_prenom,
+    rv.date_heure,
+    pr.nom AS praticien_nom,
+    pr.prenom AS praticien_prenom,
+    c.nom_centre
+FROM 
+    RendezVous rv
+JOIN 
+    patients_en_ecart p ON rv.id_patient = p.id_patient
+JOIN 
+    Practicien pr ON rv.id_praticien = pr.id_praticien
+JOIN 
+    Centre c ON rv.id_centre = c.id_centre
+WHERE 
+    rv.date_heure > TO_DATE(:date_reference, 'YYYY-MM-DD')
+ORDER BY 
+    rv.date_heure DESC;
