@@ -423,3 +423,50 @@ ORDER BY
     c.nom_capacite;
 
 
+
+
+-- 🔎 Requête : Détecter les patients sans plan d’intervention
+--              qui présentent un écart significatif (≥ 2 ans)
+--              entre leur âge réel et leur âge mental moyen
+
+WITH age_mental_moyen_par_patient AS (
+    SELECT 
+        r.id_patient,
+        ROUND(AVG(r.age_mental_calcule), 1) AS age_mental_moyen
+    FROM 
+        Resultat r
+    GROUP BY 
+        r.id_patient
+),
+patients_sans_plan AS (
+    SELECT 
+        p.id_patient,
+        p.nom,
+        p.prenom,
+        p.date_naissance
+    FROM 
+        Patient p
+    WHERE 
+        p.id_patient NOT IN (SELECT DISTINCT id_patient FROM Plan_Intervention)
+),
+patients_a_prioriser AS (
+    SELECT 
+        ps.id_patient,
+        ps.nom,
+        ps.prenom,
+        EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM ps.date_naissance) AS age_reel,
+        am.age_mental_moyen,
+        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM ps.date_naissance)) - am.age_mental_moyen AS ecart_age
+    FROM 
+        patients_sans_plan ps
+    JOIN 
+        age_mental_moyen_par_patient am ON ps.id_patient = am.id_patient
+)
+
+SELECT *
+FROM patients_a_prioriser
+WHERE ecart_age >= 2
+ORDER BY ecart_age DESC;
+
+
+
