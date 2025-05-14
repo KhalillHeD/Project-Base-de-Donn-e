@@ -425,8 +425,7 @@ ORDER BY
 
 
 
--- 🔎 Requête : Rendez-vous récents pour patients avec écart développemental > seuil
--- Paramètres à ajuster : :seuil_ecart_age, :date_reference
+-- 🔎 Requête : Rendez-vous après le 25/05/2025 pour patients avec écart développemental > 2 ans
 
 WITH age_mental_moyen AS (
     SELECT 
@@ -450,13 +449,13 @@ patients_en_ecart AS (
     JOIN 
         age_mental_moyen am ON p.id_patient = am.id_patient
     WHERE 
-        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance)) - am.age_mental_moyen > :seuil_ecart_age
+        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance)) - am.age_mental_moyen > 2
 )
 
 SELECT 
     p.nom AS patient_nom,
     p.prenom AS patient_prenom,
-    rv.date_heure,
+    TO_CHAR(rv.date_heure, 'YYYY-MM-DD HH24:MI') AS date_rendez_vous,
     pr.nom AS praticien_nom,
     pr.prenom AS praticien_prenom,
     c.nom_centre
@@ -469,6 +468,7 @@ JOIN
 JOIN 
     Centre c ON rv.id_centre = c.id_centre
 WHERE 
-    rv.date_heure > TO_DATE(:date_reference, 'YYYY-MM-DD')
+    rv.date_heure > TO_DATE('2025-05-25', 'YYYY-MM-DD')
 ORDER BY 
     rv.date_heure DESC;
+
