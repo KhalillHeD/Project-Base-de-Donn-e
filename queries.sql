@@ -406,7 +406,7 @@ FROM (
 GROUP BY patient_nom, nom_capacite;
 
 
-
+--30
 -- Compétences pour lesquelles aucun test n’a été encore passé par un patient
 SELECT 
     c.id_competence, 
