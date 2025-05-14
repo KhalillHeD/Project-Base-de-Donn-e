@@ -406,3 +406,20 @@ FROM (
 GROUP BY patient_nom, nom_capacite;
 
 
+
+-- Compétences pour lesquelles aucun test n’a été encore passé par un patient
+SELECT 
+    c.id_competence, 
+    c.nom_capacite
+FROM 
+    Competence c
+WHERE 
+    c.id_competence NOT IN (
+        SELECT DISTINCT t.id_competence
+        FROM Test t
+        JOIN Resultat_test_autisme rta ON t.id_test = rta.id_test
+    )
+ORDER BY 
+    c.nom_capacite;
+
+
