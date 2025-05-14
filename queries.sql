@@ -427,31 +427,6 @@ ORDER BY
 
 -- 🔎 Requête : Rendez-vous après le 25/05/2025 pour patients avec écart développemental > 2 ans
 
-WITH age_mental_moyen AS (
-    SELECT 
-        r.id_patient,
-        ROUND(AVG(r.age_mental_calcule), 1) AS age_mental_moyen
-    FROM 
-        Resultat r
-    GROUP BY 
-        r.id_patient
-),
-patients_en_ecart AS (
-    SELECT 
-        p.id_patient,
-        p.nom,
-        p.prenom,
-        EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance) AS age_reel,
-        am.age_mental_moyen,
-        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance)) - am.age_mental_moyen AS ecart
-    FROM 
-        Patient p
-    JOIN 
-        age_mental_moyen am ON p.id_patient = am.id_patient
-    WHERE 
-        (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance)) - am.age_mental_moyen > 2
-)
-
 SELECT 
     p.nom AS patient_nom,
     p.prenom AS patient_prenom,
@@ -462,13 +437,25 @@ SELECT
 FROM 
     RendezVous rv
 JOIN 
-    patients_en_ecart p ON rv.id_patient = p.id_patient
+    Patient p ON rv.id_patient = p.id_patient
 JOIN 
     Practicien pr ON rv.id_praticien = pr.id_praticien
 JOIN 
     Centre c ON rv.id_centre = c.id_centre
+JOIN 
+    (
+        SELECT 
+            r.id_patient,
+            ROUND(AVG(r.age_mental_calcule), 1) AS age_mental_moyen
+        FROM 
+            Resultat r
+        GROUP BY 
+            r.id_patient
+    ) am ON p.id_patient = am.id_patient
 WHERE 
-    rv.date_heure > TO_DATE('2025-05-25', 'YYYY-MM-DD')
+    (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM p.date_naissance)) - am.age_mental_moyen < 5
+    AND rv.date_heure > TO_DATE('2025-04-25', 'YYYY-MM-DD')
 ORDER BY 
     rv.date_heure DESC;
+
 
